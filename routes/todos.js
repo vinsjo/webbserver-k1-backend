@@ -1,7 +1,12 @@
 const fs = require('fs');
 const json = require('../utils/json');
 const { readRequestBody } = require('../utils/request');
-const { codeResponse, jsonResponse } = require('../utils/response');
+const {
+	codeResponse,
+	jsonResponse,
+	jsonErrorResponse,
+	createError,
+} = require('../utils/response');
 const crypto = require('crypto');
 
 const jsonPath = `${process.cwd()}/data/todos.json`;
@@ -25,7 +30,6 @@ const createTask = (text) => {
 		text,
 		completed: false,
 		created_at: Date.now(),
-		completed_at: 0,
 	};
 };
 
@@ -50,17 +54,11 @@ const createTask = (text) => {
  */
 const createRequestHandler = (requestCallback) => {
 	return async (req, res, params) => {
-		try {
-			if (params.length > 1) throw 404;
-			const [id] = params;
-			const todos = await json.read(jsonPath);
-			if (!todos) throw 500;
-			await requestCallback(req, res, todos, id);
-		} catch (e) {
-			if (typeof e === 'number') return codeResponse(res, e);
-			console.error('Request Error: ', e?.message || e);
-			codeResponse(res, 500);
-		}
+		if (params.length > 1) throw 404;
+		const [id] = params;
+		const todos = await json.read(jsonPath);
+		if (!todos) throw 500;
+		await requestCallback(req, res, todos, id);
 	};
 };
 
@@ -70,15 +68,18 @@ module.exports = {
 	GET: createRequestHandler((req, res, todos, id) => {
 		if (!id) return jsonResponse(res, todos);
 		const task = todos.find((task) => task.id === id);
-		if (!task) throw 404;
+		if (!task) throw createError(404, 'Requestes Resource Not Found');
 		jsonResponse(res, task);
 	}),
 
 	POST: createRequestHandler(async (req, res, todos, id) => {
-		if (id) throw 400;
+		if (id) throw createError(400, 'Invalid POST URI');
 		const data = await readRequestBody(req);
 		if (!data) throw 500;
-		if (!(data instanceof Object) || !data.text) throw 400;
+		if (!(data instanceof Object) || !data.text) {
+			throw createError(400, "Required field 'text' cannot me empty");
+		}
+
 		const task = createTask(data.text);
 
 		todos.push(task);
@@ -90,49 +91,55 @@ module.exports = {
 	}),
 
 	DELETE: createRequestHandler(async (req, res, todos, id) => {
-		if (!id) throw 400;
+		if (!id) throw createError(400, 'Invalid DELETE URI');
 		const index = todos.findIndex((task) => task.id === id);
-		if (index < 0) throw 404;
+		if (index < 0) throw createError(404, 'Requestes Resource Not Found');
 
 		const [deleted] = todos.splice(index, 1);
 		await json.write(jsonPath, todos);
 
-		console.log('deleted task: ', deleted);
-
-		codeResponse(res, 200);
+		jsonResponse(res, deleted, 200);
 	}),
-	PUT: createRequestHandler(async (req, res, todos, id) => {
-		if (!id) throw 400;
+	PATCH: createRequestHandler(async (req, res, todos, id) => {
+		if (!id) throw createError(400, 'Invalid PATCH URI');
 
 		const data = await readRequestBody(req);
-		if (!data) throw 500;
-		if (!(data instanceof Object)) throw 400;
+		if (!data || !(data instanceof Object)) throw 500;
 
 		const index = todos.findIndex((task) => task.id === id);
-		if (index < 0) throw 404;
+		if (index < 0) throw createError(404, 'Requestes Resource Not Found');
 		const task = todos[index];
-		let { text, completed, completed_at } = data;
+		let { text, completed, created_at } = data;
 
 		if (typeof text !== 'string') text = task.text;
-
 		if (typeof completed !== 'boolean') completed = task.completed;
-
-		if (completed && !completed_at) completed_at = Date.now();
-		else completed_at = 0;
+		if (typeof created_at !== 'number') created_at = task.created_at;
 
 		todos[index] = {
 			...task,
 			text,
 			completed,
-			completed_at,
+			created_at,
 		};
 
-		console.log('updated task: ', todos[index]);
 		await json.write(jsonPath, todos);
 		jsonResponse(res, todos[index]);
 	}),
-	// Temporär quick-fix
-	get PATCH() {
-		return this.PUT;
-	},
+	PUT: createRequestHandler(async (req, res, todos, id) => {
+		if (!id) throw createError(400, 'Invalid PUT URI');
+
+		const data = await readRequestBody(req);
+		if (!data || !(data instanceof Object)) throw 500;
+
+		const index = todos.findIndex((task) => task.id === id);
+		if (index < 0) throw createError(404, 'Requestes Resource Not Found');
+		const task = todos[index];
+
+		todos[index] = {
+			...task,
+			...data,
+		};
+		await json.write(jsonPath, todos);
+		jsonResponse(res, todos[index]);
+	}),
 };

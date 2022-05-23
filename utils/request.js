@@ -1,4 +1,5 @@
 const json = require('./json');
+const { createError } = require('./response');
 
 /**
  * @param {import("http").IncomingMessage} req
@@ -18,13 +19,10 @@ const readRequestBody = async (req) => {
 			const chunks = [];
 			req.on('data', (chunk) => chunks.push(chunk.toString()));
 			req.on('end', () => {
-				try {
-					const data = json.decode(chunks.join(''));
-					if (!data) throw 400;
-					resolve(data);
-				} catch (e) {
-					reject(e);
-				}
+				const data = json.decode(chunks.join(''));
+				!data
+					? reject(createError(400, 'Invalid JSON Format'))
+					: resolve(data);
 			});
 		});
 		return data;
