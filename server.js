@@ -28,7 +28,7 @@ http.createServer(async (req, res) => {
 
 		if (route !== 'todos') throw 404;
 		if (!todos[req.method]) {
-			throw createError(400, 'Invalid Request Method');
+			throw createError(405, 'Invalid Request Method');
 		}
 
 		await todos[req.method](req, res, params);
