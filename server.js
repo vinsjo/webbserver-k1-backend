@@ -1,5 +1,4 @@
 const http = require('http');
-// const todoResponse = require('./routes/todos');
 const todos = require('./routes/todos');
 const { splitRequestUrl } = require('./utils/request');
 const {
@@ -9,7 +8,12 @@ const {
 	jsonErrorResponse,
 } = require('./utils/response');
 
-const PORT = 5000;
+const PORT = (() => {
+	const port = parseInt(process.argv[2]);
+	return !port || Number.isNaN(port) || port <= 1024 || port >= 10000
+		? 5000
+		: port;
+})();
 
 http.createServer(async (req, res) => {
 	try {
@@ -33,7 +37,6 @@ http.createServer(async (req, res) => {
 
 		await todos[req.method](req, res, params);
 	} catch (e) {
-		console.log(e);
 		if (e instanceof Object && e.code && e.error) {
 			return jsonErrorResponse(res, e.code, e.error);
 		}
