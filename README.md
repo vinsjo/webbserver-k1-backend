@@ -42,11 +42,11 @@ All items stored in the application are in the following format:
 
 ## Requests
 
-Available Request methods and endpoints:
+Available request methods and endpoints:
 
--   GET - http://localhost:5000/todos/
--   GET - http://localhost:5000/todos/:id
--   POST - http://localhost:5000/todos/
--   DELETE - http://localhost:5000/todos/:id
--   PUT - http://localhost:5000/todos/:id
--   PATCH - http://localhost:5000/todos/:id
+-   GET - /todos
+-   GET - /todos/:id
+-   POST - /todos
+-   DELETE - /todos/:id
+-   PUT - /todos/:id
+-   PATCH - /todos/:id
