@@ -9,7 +9,16 @@ const {
 } = require('../utils/response');
 const crypto = require('crypto');
 
-const jsonPath = `${process.cwd()}/data/todos.json`;
+const jsonDir = `${process.cwd()}/data`;
+const jsonPath = `${jsonDir}/todos.json`;
+
+if (!fs.existsSync(jsonDir)) {
+	fs.mkdirSync(jsonDir);
+}
+
+if (!fs.existsSync(jsonPath)) {
+	fs.writeFileSync(jsonPath, '[]');
+}
 
 /**
  * @typedef {{
